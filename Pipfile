@@ -5,9 +5,15 @@ name = "pypi"
 
 [packages]
 streamlit = "*"
-plotly = "*"
 numpy = "*"
 pandas = "*"
+textblob = "*"
+streamlit-lottie = "*"
+streamlit-bokeh-events = "*"
+requests = "*"
+image = "*"
+tweepy = "*"
+datetime = "*"
 
 [dev-packages]
 
