@@ -285,7 +285,7 @@ class SentimentAnalyzer:
 
         fig, ax = plt.subplots(figsize=(5,5))
         self.dataSet['label'].value_counts().plot(kind='pie', title='Jumlah Label', autopct=make_autopct(self.dataSet['label'].value_counts()), ax=ax)
-        st.pyplot(fig, use_column_width=False)
+        st.pyplot(fig)
 
     def save_label(self,method):
         filename = f"Labelled_{method}_Dataset_{self.date}.csv"
@@ -310,7 +310,7 @@ class SentimentAnalyzer:
             plt.imshow(wordcloud, interpolation='bilinear')
             plt.axis('off')
             plt.tight_layout(pad=0)
-            st.pyplot(use_column_width=True)
+            st.pyplot()
 
 
 
@@ -524,7 +524,7 @@ class DataMiningSVM:
             return my_autopct
         fig, ax = plt.subplots(figsize=(5,5))
         df['predicted_label'].value_counts().plot(kind='pie', title='Jumlah Label', autopct=make_autopct(df['predicted_label'].value_counts()), ax=ax)
-        st.pyplot(fig, use_column_width=False)
+        st.pyplot(fig)
         st.dataframe(df)
     
 import pickle
@@ -557,6 +557,6 @@ class SentimentPredictor:
             return my_autopct
         fig, ax = plt.subplots(figsize=(5,5))
         data['label'].value_counts().plot(kind='pie', title='Jumlah Label', autopct=make_autopct(data['label'].value_counts()), ax=ax)
-        st.pyplot(fig, use_column_width=False)
+        st.pyplot(fig)
 
 
