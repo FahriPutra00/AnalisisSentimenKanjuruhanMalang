@@ -6,10 +6,10 @@ import datetime as dt
 import warnings
 from dotenv import load_dotenv
 warnings.filterwarnings("ignore")
-
+st.config.set_option("deprecation.showPyplotGlobalUse", False)
 @st.cache_data()
 def convert_df(df):
-    # IMPORTANT: Cache the conversion to prevent computation on every rerun
+    # IMPORTANT: Cache the conversion to prevent computation on every rerun, index = False to prevent saving the index
     return df.to_csv(sep=',',index=False).encode('utf-8')
             
 @st.cache_resource()
@@ -37,12 +37,20 @@ class TwitterCrawler():
         st.title("Crawling Dataset")
         st.dataframe(Dataset,width=None, height=None, use_container_width=True)
         csv = convert_df(Dataset)
-        st.download_button(
-            label="Download Dataset CSV:arrow_down:",
-            data=csv,
-            file_name=filename,
-            mime='text/csv',
-        )
+        with st.container():
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.empty()
+            with col2:
+                st.download_button(
+                    label="Download Dataset CSV:arrow_down:",
+                    data=csv,
+                    file_name=filename,
+                    mime='text/csv',
+                )
+            with col3:
+                st.empty()
+
     
     def run(self):
         # censor some words in the token and secret
@@ -51,7 +59,7 @@ class TwitterCrawler():
         access_token_censored = self.access_token[:4] + "*" * 10 + self.access_token[-4:]
         access_token_secret_censored = self.access_token_secret[:4] + "*" * 10 + self.access_token_secret[-4:]
         st.title("Crawling Data Twitter")
-        st.subheader("Token Iformation")
+        st.subheader("Token Information")
         st.write("Consumer Key:", consumer_key_censored)
         st.write("Consumer Secret:", consumer_secret_censored)
         st.write("Access Token:", access_token_censored)
@@ -89,12 +97,12 @@ class Preprocessing():
         ]
         more_slang = pd.DataFrame({
             'slang': ['sblm', 'sdh', 'laah', 'jlas', 'mnjlaskn', 'bhw', 'mmc', 'islamkaffah', 'serbaserbi', 'amp', 'baikm', 'berdalihminta',
-                      'ngak', 'smbil', 'bnyak', 'knpa', 'pnmbakan', 'trjadi', 'klapangan', 'memnyemangati', 'gkda', 'bnyak', 'dngan', 'pndkung'
-                      
+                      'ngak', 'smbil', 'bnyak', 'knpa', 'pnmbakan', 'trjadi', 'klapangan', 'memnyemangati', 'gkda', 'bnyak', 'dngan', 'pndkung',
+                      'krusuhan', 'bamnyaknya', 'mnyemangati', 'dkira', 'krnya', 'tmbakn', 'suporter'
                       ], 
             'normal': ['sebelum', 'sudah', 'lah', 'jelas', 'menjelaskan', 'bahwa', '', '', '', '', 'baik', 'berdalih minta','tidak', 
-                       'sambil', 'banyak', 'kenapa', 'penembakan', 'terjadi', 'lapangan', 'menyemangati', 'tidak ada', 'banyak', 'dengan', 'pendukung'
-                       
+                       'sambil', 'banyak', 'kenapa', 'penembakan', 'terjadi', 'lapangan', 'menyemangati', 'tidak ada', 'banyak', 'dengan', 'pendukung',
+                       'kerusuhan', 'banyaknya', 'menyemangati', 'dikira', 'karena', 'tembakan', 'supporter'
                        ]
         })
         self.slang_words = pd.concat([pd.read_csv(slang, sep='\t|:', header=None, names=['slang', 'normal'], engine='python', encoding='unicode_escape') for slang in self.slang_datasets], ignore_index=True)
@@ -113,50 +121,35 @@ class Preprocessing():
         def text_prep_norm(teks):
             # remove old style retweet teks "RT"
             teks = re.sub(r'^RT[\s]+', ' ', teks)
-            
             # convert to lowercase
             teks = teks.lower()
-            
             # remove numbers
             teks = re.sub(r'\d+', '', teks)
-            
             # remove stock market tickers like $GE
             teks = re.sub(r'\$\w*', '', teks)
-                    
             # remove hashtags
             # only removing the hash # sign from the word
             teks = re.sub(r'#', '', teks)
-            
             # remove @ mentions with underscore
             teks = re.sub(r'@\w*_[A-Za-z0-9_]*', '', teks)
-            
             # remove @ mentions without underscore
             teks = re.sub(r'@\w*', '', teks)
-
             # remove sym
             teks = re.sub(r":|;|=|-|\)|\(|\*|'", '', teks)
-                
             # remove links starting with "http" or "https"
             teks = re.sub(r'http\S+', '', teks)
             teks = re.sub(r'https\S+', '', teks)
-
             # remove "tco" mentions
             teks = re.sub(r'tco/\S+', '', teks)
-            
             #remove characters between words
             teks = re.sub(r'(?<=[a-zA-Z])\W+(?=[a-zA-Z])', ' ', teks)
-            
             # remove punctuation marks and symbols
             teks = re.sub(r'[^\w\s]', '', teks)
-            
             # remove underscore
             teks = re.sub(r'_', '', teks)
-
             # remove extra whitespace
             teks = re.sub(r'\s+', ' ', teks)
-            
             teks = teks.strip()
-
             return teks
         self.dataframe['tweet_regex'] = self.dataframe['teks'].apply(text_prep_norm)
         return self.dataframe
@@ -167,7 +160,7 @@ class Preprocessing():
             teks = ' '.join([self.slang_dict.get(word, word) for word in teks.split()])
             
             # Remove all non-alphanumeric characters and extra spaces
-            teks = re.sub(r'[^\w\s]+', '', teks).strip()    
+            teks = re.sub(r'[^\w\s]+', '', teks).strip().lower()  
             return teks
         self.dataframe['tweet_normal'] = self.dataframe['tweet_regex'].apply(normalize_text)
         return self.dataframe
@@ -307,6 +300,7 @@ class SentimentAnalyzer:
         
     def display_wordcloud(self, label):
         tweet_subset = self.dataSet[self.dataSet['label'] == label]
+        tweet_subset['tweet'] = tweet_subset['tweet'].astype(str)
         if tweet_subset.empty:
             st.warning("No tweets available for the selected sentiment.")
             return
@@ -416,7 +410,7 @@ import pickle
 import io
 
 class DataMiningSVM:
-    def __init__(self, kernel='sigmoid', C=1.0, gamma='auto', probability=True, random_state=None, verbose=False, 
+    def __init__(self, kernel='linear', C=1.0, gamma='auto', probability=True, random_state=0, verbose=False, 
                  max_iter=-1, shrinking=True, decision_function_shape='ovr', break_ties=False):
         self.kernel = kernel
         self.C = C
@@ -435,7 +429,7 @@ class DataMiningSVM:
         self.clf = svm.SVC(kernel=self.kernel, C=self.C, gamma=self.gamma, probability=self.probability,
                             random_state=self.random_state, verbose=self.verbose, max_iter=self.max_iter,
                             shrinking=self.shrinking, decision_function_shape=self.decision_function_shape,
-                            break_ties=self.break_ties)
+                            break_ties=self.break_ties,class_weight='balanced')
         self.date = dt.datetime.now().strftime("%d-%m-%Y_%H-%M")
     
     def train_test_split(self, df, test_size=0.25, random_state=42):
@@ -487,7 +481,13 @@ class DataMiningSVM:
         y_test = test_data["target"]
         y_pred = self.clf.predict(X_test)
         accuracy = self.clf.score(X_test, y_test)
+        precision = metrics.precision_score(y_test, y_pred, average='weighted')
+        recall = metrics.recall_score(y_test, y_pred, average='weighted')
+        f1_score = metrics.f1_score(y_test, y_pred, average='weighted')
         st.write("## Accuracy:", accuracy)
+        st.write("## Precision:", precision)
+        st.write("## Recall:", recall)
+        st.write("## F1 Score:", f1_score)
         return y_test, y_pred
     
     def display(self, y_test, y_pred):
@@ -502,7 +502,8 @@ class DataMiningSVM:
         plt.title("Confusion Matrix", fontsize=16)
         st.set_option('deprecation.showPyplotGlobalUse', False)
         st.pyplot()
-
+        
+    def display_report(self, y_test, y_pred):
         # Display classification report as table
         report = metrics.classification_report(y_test, y_pred, zero_division=1, output_dict=True)
         report_df = pd.DataFrame(report).transpose()

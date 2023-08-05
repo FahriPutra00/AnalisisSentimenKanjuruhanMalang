@@ -3,7 +3,7 @@ from streamlit_option_menu import option_menu
 from Class_Program import *
 import warnings
 warnings.filterwarnings("ignore")
-
+st.config.set_option("deprecation.showPyplotGlobalUse", False)
 st.set_page_config(
     page_title="Analisis Sentimen",
     page_icon="📊",
@@ -173,10 +173,10 @@ if selected =="Analisis Sentimen":
                 kernel = st.selectbox("Kernel", ['linear', 'poly', 'rbf', 'sigmoid'])
                 decision_function_shape = st.selectbox("Decision function shape", ['ovr', 'ovo'])
                 max_iter = st.slider("Max iterations", -1, 10000, value=-1)
-                C = st.slider("C", 0.1, 10.0, step=0.1)
+                C = st.slider("C", 1.0, 10.0, 1.0, step=1.0)
             with col2:
-                gamma = st.selectbox("Gamma", ['scale', 'auto'] + [i/10 for i in range(1, 11)])
-                random_state = st.number_input("Random state", value=42)
+                gamma = st.selectbox("Gamma", ['auto', 'scale'] + [1,2,3,4,5,6,7,8,9,10,0.1])
+                random_state = st.number_input("Random state",0,10000,0,1)
                 probability = st.checkbox("Probability", value=True)
                 shrinking = st.checkbox("Shrinking", value=True)
                 verbose = st.checkbox("Verbose", value=False)
@@ -184,6 +184,7 @@ if selected =="Analisis Sentimen":
         st.write("#### Data Labelled")
         data_label = pd.read_csv(uploaded_files)
         st.dataframe(data_label, width=None, height=None, use_container_width=True)
+        st.write(f"File Data {uploaded_files.name} memiliki jumlah data sebanyak {data_label.shape[0]} baris, dengan jumlah data positif sebanyak {data_label[data_label['label']=='positive'].shape[0]} baris, jumlah data negatif sebanyak {data_label[data_label['label']=='negative'].shape[0]} baris, dan jumlah data netral sebanyak {data_label[data_label['label']=='neutral'].shape[0]} baris.")
         show_word = SentimentAnalyzer(data_label)
         with st.container():
             col1, col2, col3 = st.columns(3)
@@ -207,9 +208,9 @@ if selected =="Analisis Sentimen":
         with st.container():
             col1, col2, = st.columns(2)
             with col1:
-                test_size = st.slider("Test Size", 0.1, 0.5, 0.25, 0.05)
+                test_size = st.slider("Test Size", 0.1, 0.5, 0.30, 0.05)
             with col2:
-                random_state = st.number_input("Random State", 0, 100, 42, 1)
+                random_state = st.number_input("Random State", 0, 100, 0, 1)
         st.subheader("Split Data")
         train_data, test_data = dmsvm.train_test_split(data_label, test_size=test_size, random_state=random_state)
         st.write("#### Data Train")
@@ -242,14 +243,15 @@ if selected =="Analisis Sentimen":
             with col1:
                 dmsvm.display(y_test, y_pred)
             with col2:
-                df = dmsvm.predict_all(test_data)
+                dmsvm.display_report(y_test, y_pred)
+                st.write("## Save Model SVM")
+                dmsvm.save_model()
         with st.container():
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.empty()
             with col2:
-                st.write("## Save Model SVM")
-                dmsvm.save_model()
+                st.empty()
             with col3:
                 st.empty()
     
@@ -269,21 +271,7 @@ if selected =="Prediksi Sentimen":
                 st.dataframe(data_predict, width=None, height=None, use_container_width=True)
                 df_pred = pred.predict(data_predict)
                 st.dataframe(df_pred, width=None, height=None, use_container_width=True)
-                # show_wordc = SentimentAnalyzer(df_pred)
-                # with st.container():
-                #     col1, col2, col3 = st.columns(3)
-                #     with col1:
-                #         with st.spinner('Running Hitung WordCloud...'):
-                #             st.write("# Positive Wordcloud")
-                #             show_wordc.display_wordcloud("positive")
-                #     with col2:
-                #         with st.spinner('Running Hitung WordCloud...'):
-                #             st.write("# Negative Wordcloud")
-                #             show_wordc.display_wordcloud("negative")
-                #     with col3:
-                #         with st.spinner('Running Hitung WordCloud...'):
-                #             st.write("# Neutral Wordcloud")
-                #             show_wordc.display_wordcloud("neutral")
+                
                 with st.container():
                     col1, col2, col3 = st.columns(3)
                     with col1:
