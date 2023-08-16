@@ -3,6 +3,7 @@ import streamlit as st
 import tweepy
 import pandas as pd
 import datetime as dt
+import subprocess
 import warnings
 from dotenv import load_dotenv
 warnings.filterwarnings("ignore")
@@ -14,26 +15,34 @@ def convert_df(df):
             
 @st.cache_resource()
 class TwitterCrawler():
-    load_dotenv()
-    
+    # load_dotenv()
+    # os.system('npm install -g tweet-harvest@latest')
     def __init__(self):
-        self.consumer_key = os.getenv('consumer_key')
-        self.consumer_secret = os.getenv('consumer_secret')
-        self.access_token = os.getenv('access_token')
-        self.access_token_secret = os.getenv('access_token_secret')
-        self.auth = tweepy.OAuthHandler(self.consumer_key, self.consumer_secret)
-        self.auth.set_access_token(self.access_token, self.access_token_secret)
-        self.api = tweepy.API(self.auth,wait_on_rate_limit=True)
         self.date = dt.datetime.now().strftime("%d-%m-%Y_%H-%M")
     
-    def search_tweet(self, keyword, length):
+    def search_tweet(self, keyword,jumlah_tweet,auth_token):
         with st.spinner('Running Crawling Data...'):
-            tweets_list = tweepy.Cursor(self.api.search_tweets, q=keyword, tweet_mode='extended', lang='id').items(length)
-            output = [{'user_name': tweet.user.screen_name, 'teks': tweet._json['full_text']} for tweet in tweets_list]
-        st.success('Crawling Selesai')
-        st.write("Berhasil Melakukan Crawling Data Sejumlah :",len(output))    
-        filename = f"{keyword}_{len(output)}_{self.date}.csv"
-        Dataset = pd.DataFrame(output)
+            # Crawl Data
+            filename = f"{keyword}_{jumlah_tweet}_{self.date}.csv"
+            search_keyword = f'{keyword} lang:id'
+            limit = jumlah_tweet
+            auth_token = auth_token  # Replace this with your auth token
+            crawl_command = f'npx tweet-harvest@latest -o "{filename}" -s "{search_keyword}" -l {limit} --token "{auth_token}"'
+            # Run the crawl command and provide the auth token as input
+            process = subprocess.Popen(crawl_command, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = process.communicate(input=b"\n")  # Provide the auth token as input
+            # Check if the process was successful
+        if process.returncode == 0:
+            st.success('Crawling Berhasil Dilakukan')
+            # Specify the path to your CSV file
+            file_path = os.path.join("tweets-data", filename)
+            # Read the CSV file into a pandas DataFrame
+            Crawl_Dataset = pd.read_csv(file_path, delimiter=";")
+            num_tweets = len(Crawl_Dataset)
+            st.write(f"Berhasil Melakukan Crawling Data Sejumlah : {num_tweets} Tweet")
+        else:
+            print("Crawling encountered an error.")    
+        Dataset = Crawl_Dataset[["username","full_text"]]
         st.title("Crawling Dataset")
         st.dataframe(Dataset,width=None, height=None, use_container_width=True)
         csv = convert_df(Dataset)
@@ -53,23 +62,17 @@ class TwitterCrawler():
 
     
     def run(self):
-        # censor some words in the token and secret
-        consumer_key_censored = self.consumer_key[:4] + "*" * 10 + self.consumer_key[-4:]
-        consumer_secret_censored = self.consumer_secret[:4] + "*" * 10 + self.consumer_secret[-4:]
-        access_token_censored = self.access_token[:4] + "*" * 10 + self.access_token[-4:]
-        access_token_secret_censored = self.access_token_secret[:4] + "*" * 10 + self.access_token_secret[-4:]
         st.title("Crawling Data Twitter")
-        st.subheader("Token Information")
-        st.write("Consumer Key:", consumer_key_censored)
-        st.write("Consumer Secret:", consumer_secret_censored)
-        st.write("Access Token:", access_token_censored)
-        st.write("Access Token Secret:", access_token_secret_censored)
+        st.write('#### **MASUKAN AUTH_KEY**')
+        st.write('**Untuk mendapatkan auth token silahkan melakukan login pada laman Twitter.com**')
+        st.write("**Setelah berhasil login tekan f12 lalu cari tab Application dan temukan auth_token**")
+        auth_token = st.text_input("Masukan Authentation Token :")
         st.write('#### **Masukan Keyword**')
         keyword = st.text_input("Masukkan Keyword Yang Akan Dicari:")
         st.write('#### **Masukan Jumlah Data Yang Ingin Dicari**')
-        length = st.number_input("Masukkan Jumlah Tweet Yang Akan Dicari:", min_value=1, step=1)
+        length = st.number_input("Masukkan Jumlah Tweet Yang Akan Dicari :", min_value=1, step=1)
         if st.button("Run Crawl:mag:"):
-            self.search_tweet(keyword, length)
+            self.search_tweet(keyword,length,auth_token)
             
 # import library unutk stopword
 from nltk.corpus import stopwords
