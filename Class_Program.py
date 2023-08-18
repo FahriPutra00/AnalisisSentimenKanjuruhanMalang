@@ -1,11 +1,11 @@
 import os
 import streamlit as st
-import tweepy
+# import tweepy
 import pandas as pd
 import datetime as dt
 import subprocess
 import warnings
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 warnings.filterwarnings("ignore")
 st.config.set_option("deprecation.showPyplotGlobalUse", False)
 @st.cache_data()
